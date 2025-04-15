@@ -28,4 +28,6 @@ git clone https://github.com/dhifmed/camel-banking-integration.git
 cd camel-banking-integration
 
 
-![Banking Integration Diagram](images/banking-integration-diagram.png)
+
+![banking-integration-diagram](https://github.com/user-attachments/assets/5af39021-b292-4a74-97ea-b0496bc65f8f)
+
