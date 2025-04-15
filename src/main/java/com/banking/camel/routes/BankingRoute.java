@@ -5,6 +5,7 @@ import com.banking.camel.model.BalanceRequest;
 import com.banking.camel.model.TransactionHistoryResponse;
 import com.banking.camel.model.TransactionRecord;
 import com.banking.camel.service.TransactionServiceImpl;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.dataformat.JsonLibrary;
@@ -27,6 +28,11 @@ public class BankingRoute extends RouteBuilder {
     private final TransactionServiceImpl transactionServiceImpl;
     private final AccountSummary accountSummary;
 
+    @Value("${smtp.username}")
+    private String smtpUsername;
+
+    @Value("${smtp.password}")
+    private String smtpPassword;
 
     public BankingRoute(TransactionServiceImpl transactionServiceImpl, AccountSummary accountSummary) {
 
@@ -63,6 +69,17 @@ public class BankingRoute extends RouteBuilder {
                     Double balance = exchange.getProperty("balance", Double.class);
                     @SuppressWarnings("unchecked")
                     List<TransactionRecord> txList = exchange.getProperty("transactions", List.class);
+
+
+
+                    boolean largeTransaction = txList.stream().anyMatch(tx -> tx.getAmount() > 10000);
+
+                    if (largeTransaction) {
+                        exchange.getContext().createProducerTemplate().sendBody("direct:notify", Map.of(
+                                "balance", balance,
+                                "transactions", txList
+                        ));
+                    }
 
 
                     accountSummary.setBalance(balance);
@@ -109,6 +126,11 @@ public class BankingRoute extends RouteBuilder {
                 });
 
 
+        from("direct:notify")
+                .log("Sending notification for large transactions: ${body}")
+                .setHeader("subject", constant("Alert: Large Transaction Detected"))
+                .setHeader("to", constant(smtpUsername))
+                .to("smtps://smtp.gmail.com:465?username=" + smtpUsername + "&password=" + smtpPassword);
 
 
         from("cxf:/TransactionService?serviceClass=com.banking.camel.service.TransactionService"

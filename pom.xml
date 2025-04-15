@@ -73,6 +73,12 @@
 			<version>4.11.0</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-mail -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-mail</artifactId>
+			<version>4.11.0</version>
+		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-cxf -->
 
 		<dependency>
