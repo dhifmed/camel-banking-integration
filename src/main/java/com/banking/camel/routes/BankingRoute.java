@@ -5,6 +5,8 @@ import com.banking.camel.model.BalanceRequest;
 import com.banking.camel.model.TransactionHistoryResponse;
 import com.banking.camel.model.TransactionRecord;
 import com.banking.camel.service.TransactionServiceImpl;
+import org.apache.camel.CamelContext;
+import org.apache.camel.ProducerTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.builder.RouteBuilder;
@@ -39,6 +41,18 @@ public class BankingRoute extends RouteBuilder {
         this.transactionServiceImpl = transactionServiceImpl;
         this.accountSummary = accountSummary;
     }
+
+    private void sendLargeTransactionNotifications(CamelContext context, double balance, List<TransactionRecord> txList) {
+        Map<String, Object> payload = Map.of(
+                "balance", balance,
+                "transactions", txList
+        );
+
+        ProducerTemplate template = context.createProducerTemplate();
+        template.sendBody("direct:notifyByEmail", payload);
+        template.sendBody("direct:notifyKafka", payload);
+    }
+
 
     @Override
     public void configure() throws Exception {
@@ -75,10 +89,8 @@ public class BankingRoute extends RouteBuilder {
                     boolean largeTransaction = txList.stream().anyMatch(tx -> tx.getAmount() > 10000);
 
                     if (largeTransaction) {
-                        exchange.getContext().createProducerTemplate().sendBody("direct:notify", Map.of(
-                                "balance", balance,
-                                "transactions", txList
-                        ));
+                        log.info("Sending Notifications to email and kafka topic...");
+                        sendLargeTransactionNotifications(exchange.getContext(), balance, txList);
                     }
 
 
@@ -126,11 +138,18 @@ public class BankingRoute extends RouteBuilder {
                 });
 
 
-        from("direct:notify")
+        from("direct:notifyByEmail")
                 .log("Sending notification for large transactions: ${body}")
                 .setHeader("subject", constant("Alert: Large Transaction Detected"))
                 .setHeader("to", constant(smtpUsername))
                 .to("smtps://smtp.gmail.com:465?username=" + smtpUsername + "&password=" + smtpPassword);
+
+        from("direct:notifyKafka")
+                .log("Sending Kafka notification for large transactions: ${body}")
+                .setHeader("kafka.KEY", simple("${body[transactions][0].transactionId}"))
+                .log("Sending to topic : ${body}")
+                .to("kafka:transaction-alerts?brokers=localhost:9092");
+
 
 
         from("cxf:/TransactionService?serviceClass=com.banking.camel.service.TransactionService"

@@ -81,6 +81,12 @@
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-cxf -->
 
+		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-kafka -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-kafka</artifactId>
+			<version>4.11.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-cxf-soap</artifactId>
